@@ -23,5 +23,24 @@ class GraphConvolution(tf.keras.layers.Layer):
         config.update({'input_sz': self.input_sz, 'output_sz': self.output_sz, 'activation': self.activation})
         return config
 
+
 class InnerProductDecoder(tf.keras.layers.Layer):
-    
+
+    ''' inner product decoder reconstructing adjacency matrix as sigma(z^T z) '''
+
+    def __init__(self, z_sz, activation, **kwargs):
+        super(InnerProductDecoder, self).__init__(**kwargs)
+        self.z_sz = z_sz
+        self.activation = activation
+
+    def call(self, inputs):
+        z_t = tf.transpose(inputs)
+        adjacency_hat = tf.matmul(inputs, z_t)
+        x = tf.reshape(adjacency_hat, [-1]) # flatten for activation
+        x = self.activation(x)
+        return tf.reshape(x, adjacency_hat.shape)
+
+    def get_config(self):
+        config = super(InnerProductDecoder, self).get_config()
+        config.update({'z_sz': self.z_sz, 'activation': self.activation})
+        return config
