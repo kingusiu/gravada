@@ -4,23 +4,23 @@ import tensorflow as tf
 
 class GraphConvolution(tf.keras.layers.Layer):
     
-    def __init__(self, input_sz, output_sz, activation, **kwargs):
+    def __init__(self, output_sz, activation, **kwargs):
         super(GraphConvolution, self).__init__(**kwargs)
-        self.input_sz = input_sz
         self.output_sz = output_sz
         self.activation = activation
 
     def build(self, input_shape):
-        self.kernel = self.add_weight("kernel", shape=[input_shape([-1], self.output_sz)])
+        # kernel in Keras is transposed: instead of Wx computing x^T W^T, s.t. first dimension of W matches input dimension
+        self.kernel = self.add_weight("kernel", shape=[int(input_shape[-1]), self.output_sz])
 
     def call(self, inputs, adjacency):
         x = tf.matmul(inputs, self.kernel)
-        x = tf.sparse_tensor_dense_matmul(adjacency, x)
+        x = tf.matmul(adjacency, x)
         return self.activation(x)
 
     def get_config(self):
         config = super(GraphConvolution, self).get_config()
-        config.update({'input_sz': self.input_sz, 'output_sz': self.output_sz, 'activation': self.activation})
+        config.update({'output_sz': self.output_sz, 'activation': self.activation})
         return config
 
 
@@ -42,5 +42,5 @@ class InnerProductDecoder(tf.keras.layers.Layer):
 
     def get_config(self):
         config = super(InnerProductDecoder, self).get_config()
-        config.update({'z_sz': self.z_sz, 'activation': self.activation})
+        config.update({'z_sz': self.z_sz})
         return config
