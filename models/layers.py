@@ -10,6 +10,9 @@ class GraphConvolution(tf.keras.layers.Layer):
         self.activation = activation
 
     def build(self, input_shape):
+        # build is invoked first time the layer is called, input_shape is based on the first argument 
+        # passed to call that is stripped from args & kwargs as 'inputs': https://github.com/tensorflow/tensorflow/blob/b36436b087bd8e8701ef51718179037cccdfc26e/tensorflow/python/keras/engine/base_layer.py#L981-L982
+        
         # kernel in Keras is transposed: instead of Wx computing x^T W^T, s.t. first dimension of W matches input dimension
         self.kernel = self.add_weight("kernel", shape=[int(input_shape[-1]), self.output_sz])
 
