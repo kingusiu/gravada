@@ -27,7 +27,7 @@ class GraphAutoencoder(tf.keras.Model):
 
 
     def call(self, x, adjacency):
-        z = self.encoder(x, adjacency)
+        z = self.encoder((x, adjacency))
         adj_reco = self.decoder(z)
         return adj_reco
 
@@ -50,4 +50,4 @@ class GraphVariationalAutoencoder(GraphAutoencoder):
 
         self.z = self.z_mean + tf.random_normal(self.nodes_n) * tf.exp(self.z_log_std)
 
-        return tf.keras.Model(inputs=(inputs_feat, inputs_adj), outputs=self.z)
+        return tf.keras.Model(inputs=[inputs_feat, inputs_adj], outputs=self.z)
