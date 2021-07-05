@@ -107,9 +107,8 @@ class GraphAutoencoderKarate(GraphAutoencoder):
         with fixed setup (3 layers, tanh activation)
     '''
 
-    def __init__(self, nodes_n, feat_sz, activation, **kwargs):
-        super(GraphAutoencoderKarate, self).__init__(**kwargs)
-        self.activation = tf.nn.tanh
+    def __init__(self, nodes_n, feat_sz, activation=tf.nn.tanh, **kwargs):
+        super(GraphAutoencoderKarate, self).__init__(nodes_n, feat_sz, activation, **kwargs)
 
 
     def build_encoder(self):
@@ -125,3 +124,6 @@ class GraphAutoencoderKarate(GraphAutoencoder):
         encoder.summary()
         return encoder
 
+    def call(self, inputs):
+        z = self.encoder(inputs)
+        return z
