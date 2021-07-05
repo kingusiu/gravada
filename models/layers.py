@@ -14,7 +14,10 @@ class GraphConvolution(tf.keras.layers.Layer):
         # passed to call that is stripped from args & kwargs as 'inputs': https://github.com/tensorflow/tensorflow/blob/b36436b087bd8e8701ef51718179037cccdfc26e/tensorflow/python/keras/engine/base_layer.py#L981-L982
         
         # kernel in Keras is transposed: instead of Wx computing x^T W^T, s.t. first dimension of W matches input dimension
-        self.kernel = self.add_weight("kernel", shape=[int(input_shape[-1]), self.output_sz])
+        self.kernel = self.add_weight("kernel", shape=[int(input_shape[-1]), self.output_sz], initializer=tf.keras.initializers.GlorotUniform())
+
+        # TODO: add bias?
+
 
     def call(self, inputs, adjacency):
         x = tf.matmul(inputs, self.kernel)
@@ -31,19 +34,16 @@ class InnerProductDecoder(tf.keras.layers.Layer):
 
     ''' inner product decoder reconstructing adjacency matrix as sigma(z^T z) '''
 
-    def __init__(self, z_sz, activation, **kwargs):
+    def __init__(self, activation, **kwargs):
         super(InnerProductDecoder, self).__init__(**kwargs)
-        self.z_sz = z_sz
         self.activation = activation
 
     def call(self, inputs):
-        z_t = tf.transpose(inputs)
+        z_t = tf.transpose(inputs, perm=[0, 2, 1])
         adjacency_hat = tf.matmul(inputs, z_t)
-        x = tf.reshape(adjacency_hat, [-1]) # flatten for activation
-        x = self.activation(x)
-        return tf.reshape(x, adjacency_hat.shape)
+        return self.activation(adjacency_hat)
+
 
     def get_config(self):
         config = super(InnerProductDecoder, self).get_config()
-        config.update({'z_sz': self.z_sz})
         return config
