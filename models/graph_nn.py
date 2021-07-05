@@ -107,12 +107,12 @@ class GraphAutoencoderKarate(GraphAutoencoder):
         with fixed setup (3 layers, tanh activation)
     '''
 
-     def __init__(self, nodes_n, feat_sz, activation, **kwargs):
+    def __init__(self, nodes_n, feat_sz, activation, **kwargs):
         super(GraphAutoencoderKarate, self).__init__(**kwargs)
         self.activation = tf.nn.tanh
 
 
-     def build_encoder(self):
+    def build_encoder(self):
         ''' reduce feat_sz to 2 '''
         inputs_feat = tf.keras.layers.Input(shape=self.input_shape_feat, dtype=tf.float32, name='encoder_input_features')
         inputs_adj = tf.keras.layers.Input(shape=self.input_shape_adj, dtype=tf.float32, name='encoder_input_adjacency')
