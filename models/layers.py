@@ -4,7 +4,7 @@ import tensorflow as tf
 
 class GraphConvolution(tf.keras.layers.Layer):
     
-    def __init__(self, output_sz, activation, **kwargs):
+    def __init__(self, output_sz, activation=tf.keras.activations.linear, **kwargs):
         super(GraphConvolution, self).__init__(**kwargs)
         self.output_sz = output_sz
         self.activation = activation
@@ -32,9 +32,15 @@ class GraphConvolution(tf.keras.layers.Layer):
 
 class InnerProductDecoder(tf.keras.layers.Layer):
 
-    ''' inner product decoder reconstructing adjacency matrix as sigma(z^T z) '''
+    ''' inner product decoder reconstructing adjacency matrix as act(z^T z) 
+        input assumed of shape [batch_sz x n_nodes x z_d]
+        where 
+            batch_sz can be 1 for single example feeding
+            n_nodes ... number of nodes in graph
+            z_d ... dimensionality of latent space
+    '''
 
-    def __init__(self, activation, **kwargs):
+    def __init__(self, activation=tf.keras.activations.linear, **kwargs):
         super(InnerProductDecoder, self).__init__(**kwargs)
         self.activation = activation
 
