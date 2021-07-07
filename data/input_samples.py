@@ -28,13 +28,13 @@ def make_toy_graph():
     return X[np.newaxis,:,:], A[np.newaxis,:,:], A_tilde[np.newaxis,:,:] # add extra dim for batch, otheriwse model.fit does not work out of the box
 
 
-def make_mask(idx, len):
-    mask = np.zeros(len)
+def make_mask(idx, shape):
+    mask = np.zeros(shape)
     mask[idx] = 1
     return np.array(mask, dtype=np.bool)
 
-def make_karate_data():
 
+def get_karate_graph():
     club_dict = {'Mr. Hi' : 0, 
              'Officer': 1}
 
@@ -45,8 +45,26 @@ def make_karate_data():
     A_tilde = normalized_adjacency(A)
     club_labels = nx.get_node_attributes(G,'club')
     y = np.array([club_dict[label] for label in club_labels.values()])
+    return X, A, A_tilde, y
+
+def make_karate_data_classifier():
+
+    X, A, A_tilde, y = get_karate_graph()
+    nodes_n = len(y)
 
     train_mask = make_mask(np.random.randint(nodes_n, size=int(nodes_n/3)), nodes_n) # third of nodes = training
     valid_mask = make_mask(np.random.randint(nodes_n, size=int(nodes_n/3)), nodes_n) # third of nodes = validation
 
     return X, A_tilde, y, train_mask, valid_mask
+
+
+def make_karate_data_autoencoder(): 
+
+    X, A, A_tilde, y = get_karate_graph()
+    nodes_n = len(y)
+
+    train_mask = np.random.choice([True, False], (nodes_n, nodes_n))
+    valid_mask = np.random.choice([True, False], (nodes_n, nodes_n))
+
+    return X, A_tilde, A, train_mask, valid_mask
+ 

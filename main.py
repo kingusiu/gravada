@@ -7,22 +7,42 @@ import models.graph_nn as grap
 
 
 
-karate_example = True
+karate_classify_example = False
+karate_autoencode_example = True
 
-if karate_example:
+if karate_classify_example:
 
     # data
-    X, A_tilde, y, train_mask, valid_mask = inpu.make_karate_data()
+    X, A_tilde, y, train_mask, valid_mask = inpu.make_karate_data_classifier()
     nodes_n = len(y)
 
     # model 
-    gnn = grap.GraphAutoencoderKarate(nodes_n=nodes_n, feat_sz=nodes_n, activation=tf.nn.tanh)
+    gnn = grap.GraphClassifierKarate(nodes_n=nodes_n, feat_sz=nodes_n, activation=tf.nn.tanh)
     gnn.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=0.01), run_eagerly=True)
     callbacks = [tf.keras.callbacks.ReduceLROnPlateau(factor=0.5, patience=5, verbose=1)]
     # have to add dummy batch dimension, otherwise keras fit will cut off data
     gnn.fit((X[np.newaxis,:,:], A_tilde[np.newaxis,:,:], train_mask[np.newaxis,:]), y[np.newaxis,:], epochs=100, validation_data=((X[np.newaxis,:,:], A_tilde[np.newaxis,:,:], valid_mask[np.newaxis,:]), y[np.newaxis,:]), callbacks=callbacks)
 
     z, probs = gnn((X, A_tilde))
+
+
+elif karate_autoencode_example:
+
+    # data
+    X, A_tilde, A, train_mask, valid_mask = inpu.make_karate_data_autoencoder()
+    nodes_n = len(X)
+
+    # model 
+    gnn = grap.GraphClassifierKarate(nodes_n=nodes_n, feat_sz=nodes_n, activation=tf.nn.tanh)
+    gnn.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=0.01), run_eagerly=True)
+    callbacks = [tf.keras.callbacks.ReduceLROnPlateau(factor=0.5, patience=5, verbose=1)]
+    # have to add dummy batch dimension, otherwise keras fit will cut off data
+    gnn.fit((X[np.newaxis,:,:], A_tilde[np.newaxis,:,:], train_mask[np.newaxis,:]), y[np.newaxis,:], epochs=100, validation_data=((X[np.newaxis,:,:], A_tilde[np.newaxis,:,:], valid_mask[np.newaxis,:]), y[np.newaxis,:]), callbacks=callbacks)
+
+    z, probs = gnn((X, A_tilde))
+
+
+
 
 else:
 

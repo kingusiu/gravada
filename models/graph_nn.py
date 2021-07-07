@@ -109,13 +109,13 @@ def masked_karate_loss(y_true, y_pred, mask):
     return scce(y_true[mask], y_pred[mask])
 
 
-class GraphAutoencoderKarate(GraphAutoencoder):
-    ''' test graph autoencoder for karate club example 
+class GraphClassifierKarate(GraphAutoencoder):
+    ''' test graph classification encoder for karate club example 
         with fixed setup (3 layers, tanh activation)
     '''
 
     def __init__(self, nodes_n, feat_sz, activation=tf.nn.tanh, **kwargs):
-        super(GraphAutoencoderKarate, self).__init__(nodes_n, feat_sz, activation, **kwargs)
+        super(GraphClassifierKarate, self).__init__(nodes_n, feat_sz, activation, **kwargs)
 
 
     def build_encoder(self):
@@ -161,4 +161,46 @@ class GraphAutoencoderKarate(GraphAutoencoder):
 
         z, probs = self((X, adj_tilde), training=False)
         loss = masked_karate_loss(Y, probs, mask) # TODO: add regularization
+        return {'loss' : loss}
+
+
+@tf.function
+def masked_karate_adjacency_loss(adj_orig, adj_pred, mask):
+        bce = tf.keras.losses.BinaryCrossentropy(from_logits=True)
+        return bce(adj_orig[mask], adj_pred[mask])    
+
+
+class GraphAutoencoderKarate(GraphClassifierKarate):
+
+    def call(self, inputs):
+        z = self.encoder(inputs)
+        adj_pred = self.decoder(z)
+        return z, adj_pred
+
+    def train_step(self, data):
+        # import ipdb; ipdb.set_trace()
+        (X, adj_tilde, mask), adj_orig = data
+
+        with tf.GradientTape() as tape:
+            z, adj_pred = self((X, adj_tilde))  # Forward pass
+            # Compute the loss value
+            # (the loss function is configured in `compile()`)
+            # loss = adjacency_loss(adj_orig, adj_pred) # TODO: add regularization
+            loss = masked_karate_adjacency_loss(adj_orig, adj_pred, mask) # TODO: add regularization
+
+        # Compute gradients
+        trainable_vars = self.trainable_variables
+        gradients = tape.gradient(loss, trainable_vars)
+        # Update weights
+        self.optimizer.apply_gradients(zip(gradients, trainable_vars))
+        # Return a dict mapping metric names to current value
+        return {m.name: m.result() for m in self.metrics}
+
+
+    def test_step(self, data):
+        (X, adj_tilde, mask), adj_orig = data
+
+        z, adj_pred = self((X, adj_tilde), training=False)  # Forward pass
+        loss = masked_karate_adjacency_loss(adj_orig, adj_pred, mask) # TODO: add regularization
+        
         return {'loss' : loss}
