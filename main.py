@@ -11,22 +11,18 @@ karate_example = True
 
 if karate_example:
 
-    club_dict = dict('Mr. Hi': 0, 'Officer': 1)
-
-    # input sample
-    G = nx.karate_club_graph()
-    X = np.eye(G.number_of_nodes(), dtype=np.float32) # featureless graph
-    A = nx.to_numpy_array(G)
-    A_tilde = inpu.normalized_adjacency(A)
-    club_labels = nx.get_node_attributes(G,'club')
-    y = np.array([club_dict[label] for label in club_labels ])
+    # data
+    X, A_tilde, y, train_mask, valid_mask = inpu.make_karate_data()
+    nodes_n = len(y)
 
     # model 
-    gnn = grap.GraphAutoencoderKarate(nodes_n=G.number_of_nodes(), feat_sz=1, activation=tf.nn.tanh)
-    gnn.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=0.01))
-    gnn.fit((X, A_tilde), A, epochs=100, validation_data=((X,A_tilde),A), callbacks=[tf.keras.callbacks.ReduceLROnPlateau(factor=0.5, patience=5, verbose=1)])
+    gnn = grap.GraphAutoencoderKarate(nodes_n=nodes_n, feat_sz=nodes_n, activation=tf.nn.tanh)
+    gnn.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=0.01), run_eagerly=True)
+    callbacks = [tf.keras.callbacks.ReduceLROnPlateau(factor=0.5, patience=5, verbose=1)]
+    # have to add dummy batch dimension, otherwise keras fit will cut off data
+    gnn.fit((X[np.newaxis,:,:], A_tilde[np.newaxis,:,:], train_mask[np.newaxis,:]), y[np.newaxis,:], epochs=100, validation_data=((X[np.newaxis,:,:], A_tilde[np.newaxis,:,:], valid_mask[np.newaxis,:]), y[np.newaxis,:]), callbacks=callbacks)
 
-    embedding = gnn((X, A_tilde))
+    z, probs = gnn((X, A_tilde))
 
 else:
 

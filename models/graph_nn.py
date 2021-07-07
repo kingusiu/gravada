@@ -105,7 +105,8 @@ class GraphVariationalAutoencoder(GraphAutoencoder):
 
 @tf.function
 def masked_karate_loss(y_true, y_pred, mask):
-    return tf.keras.losses.SparseCategoricalCrossentropy(y_true[mask], y_pred[mask])
+    scce = tf.keras.losses.SparseCategoricalCrossentropy() # using sparseCat since providing labels as integers
+    return scce(y_true[mask], y_pred[mask])
 
 
 class GraphAutoencoderKarate(GraphAutoencoder):
@@ -136,7 +137,8 @@ class GraphAutoencoderKarate(GraphAutoencoder):
         return z, probs
 
     def train_step(self, data):
-        (X, adj_tilde), (Y, mask) = data
+        # import ipdb; ipdb.set_trace()
+        (X, adj_tilde, mask), Y = data
 
         with tf.GradientTape() as tape:
             z, probs = self((X, adj_tilde))  # Forward pass
@@ -155,7 +157,7 @@ class GraphAutoencoderKarate(GraphAutoencoder):
 
 
     def test_step(self, data):
-        (X, adj_tilde), (Y, mask) = data
+        (X, adj_tilde, mask), Y = data
 
         z, probs = self((X, adj_tilde), training=False)
         loss = masked_karate_loss(Y, probs, mask) # TODO: add regularization

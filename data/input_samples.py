@@ -1,4 +1,5 @@
 import numpy as np
+import networkx as nx
 
 
 def normalized_adjacency(A):
@@ -25,3 +26,27 @@ def make_toy_graph():
     X = np.matrix([[i/4, i/3, 1/i] for i in range(1, A.shape[0]+1)], dtype=np.float32)
 
     return X[np.newaxis,:,:], A[np.newaxis,:,:], A_tilde[np.newaxis,:,:] # add extra dim for batch, otheriwse model.fit does not work out of the box
+
+
+def make_mask(idx, len):
+    mask = np.zeros(len)
+    mask[idx] = 1
+    return np.array(mask, dtype=np.bool)
+
+def make_karate_data():
+
+    club_dict = {'Mr. Hi' : 0, 
+             'Officer': 1}
+
+    G = nx.karate_club_graph()
+    nodes_n = G.number_of_nodes()
+    X = np.eye(nodes_n, dtype=np.float32) # featureless graph
+    A = nx.to_numpy_array(G)
+    A_tilde = normalized_adjacency(A)
+    club_labels = nx.get_node_attributes(G,'club')
+    y = np.array([club_dict[label] for label in club_labels.values()])
+
+    train_mask = make_mask(np.random.randint(nodes_n, size=int(nodes_n/3)), nodes_n) # third of nodes = training
+    valid_mask = make_mask(np.random.randint(nodes_n, size=int(nodes_n/3)), nodes_n) # third of nodes = validation
+
+    return X, A_tilde, y, train_mask, valid_mask

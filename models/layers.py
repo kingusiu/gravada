@@ -16,7 +16,7 @@ class GraphConvolution(tf.keras.layers.Layer):
         # kernel in Keras is transposed: instead of Wx computing x^T W^T, s.t. first dimension of W matches input dimension
         self.kernel = self.add_weight("kernel", shape=[int(input_shape[-1]), self.output_sz], initializer=tf.keras.initializers.GlorotUniform())
 
-        # TODO: add bias?
+        # TODO: add bias? (if yes, can also call base layer build directly)
 
 
     def call(self, inputs, adjacency):
