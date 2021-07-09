@@ -62,9 +62,9 @@ def make_karate_data_autoencoder():
 
     X, A, A_tilde, y = get_karate_graph()
     nodes_n = len(y)
+    A = A + np.eye(nodes_n) # for the autoencoder the adjacency matrix contains self-edges
 
     train_mask = np.random.choice([True, False], (nodes_n, nodes_n))
     valid_mask = np.random.choice([True, False], (nodes_n, nodes_n))
 
     return X, A_tilde, A, train_mask, valid_mask
- 

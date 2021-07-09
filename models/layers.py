@@ -45,7 +45,8 @@ class InnerProductDecoder(tf.keras.layers.Layer):
         self.activation = activation
 
     def call(self, inputs):
-        z_t = tf.transpose(inputs, perm=[0, 2, 1])
+        perm = [0, 2, 1] if len(inputs.shape) == 3 else [1, 0]
+        z_t = tf.transpose(inputs, perm=perm)
         adjacency_hat = tf.matmul(inputs, z_t)
         return self.activation(adjacency_hat)
 

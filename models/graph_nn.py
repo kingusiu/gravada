@@ -25,6 +25,7 @@ class GraphAutoencoder(tf.keras.Model):
         self.input_shape_feat = [self.nodes_n, self.feat_sz]
         self.input_shape_adj = [self.nodes_n, self.nodes_n]
         self.activation = activation
+        self.loss_fn = tf.keras.losses.BinaryCrossentropy(from_logits=True)
         self.encoder = self.build_encoder()
         self.decoder = lays.InnerProductDecoder(activation=tf.keras.activations.linear) # if activation sigmoid -> return probabilities from logits
 
@@ -34,7 +35,7 @@ class GraphAutoencoder(tf.keras.Model):
         inputs_feat = tf.keras.layers.Input(shape=self.input_shape_feat, dtype=tf.float32, name='encoder_input_features')
         inputs_adj = tf.keras.layers.Input(shape=self.input_shape_adj, dtype=tf.float32, name='encoder_input_adjacency')
         x = inputs_feat
-        #feat_sz-1 layers needed to reduce to R^1 
+        #feat_sz-1 layers needed to reduce to R^2 
         for output_sz in reversed(range(2, self.feat_sz)):
             x = lays.GraphConvolution(output_sz=output_sz, activation=self.activation)(x, inputs_adj)
         # NO activation before latent space: last graph with linear pass through activation
@@ -46,20 +47,18 @@ class GraphAutoencoder(tf.keras.Model):
 
     def call(self, inputs):
         z = self.encoder(inputs)
-        adj_reco = self.decoder(z)
-        return adj_reco
-
+        adj_pred = self.decoder(z)
+        return z, adj_pred
 
     def train_step(self, data):
+        # import ipdb; ipdb.set_trace()
         (X, adj_tilde), adj_orig = data
-        pos_weight = tf.cast(adj_orig.shape[1] * adj_orig.shape[2] - tf.math.reduce_sum(adj_orig), tf.float32) / tf.math.reduce_sum(adj_orig)
+        # pos_weight = tf.cast(adj_orig.shape[1] * adj_orig.shape[2] - tf.math.reduce_sum(adj_orig), tf.float32) / tf.math.reduce_sum(adj_orig)
 
         with tf.GradientTape() as tape:
-            adj_pred = self((X, adj_tilde))  # Forward pass
-            # Compute the loss value
-            # (the loss function is configured in `compile()`)
-            # loss = adjacency_loss(adj_orig, adj_pred) # TODO: add regularization
-            loss = adjacency_loss_from_logits(adj_orig, adj_pred, pos_weight) # TODO: add regularization
+            z, adj_pred = self((X, adj_tilde))  # Forward pass
+            # Compute the loss value (binary cross entropy for a_ij in {0,1})
+            loss = self.loss_fn(adj_orig, adj_pred) # TODO: add regularization
 
         # Compute gradients
         trainable_vars = self.trainable_variables
@@ -72,12 +71,12 @@ class GraphAutoencoder(tf.keras.Model):
 
     def test_step(self, data):
         (X, adj_tilde), adj_orig = data
-        pos_weight = tf.cast(adj_orig.shape[1] * adj_orig.shape[2] - tf.math.reduce_sum(adj_orig), tf.float32) / tf.math.reduce_sum(adj_orig)
 
-        adj_pred = self((X, adj_tilde), training=False)
-        # loss = adjacency_loss(adj_orig, adj_pred) # TODO: add regularization
-        loss = adjacency_loss_from_logits(adj_orig, adj_pred, pos_weight) # TODO: add regularization
+        z, adj_pred = self((X, adj_tilde), training=False)  # Forward pass
+        loss = self.loss_fn(adj_orig, adj_pred) # TODO: add regularization
+        
         return {'loss' : loss}
+
 
 
 
@@ -173,6 +172,7 @@ def masked_karate_adjacency_loss(adj_orig, adj_pred, mask):
 class GraphAutoencoderKarate(GraphClassifierKarate):
 
     def call(self, inputs):
+        # import ipdb; ipdb.set_trace()
         z = self.encoder(inputs)
         adj_pred = self.decoder(z)
         return z, adj_pred

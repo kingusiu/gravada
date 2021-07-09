@@ -33,13 +33,14 @@ elif karate_autoencode_example:
     nodes_n = len(X)
 
     # model 
-    gnn = grap.GraphClassifierKarate(nodes_n=nodes_n, feat_sz=nodes_n, activation=tf.nn.tanh)
+    gnn = grap.GraphAutoencoderKarate(nodes_n=nodes_n, feat_sz=nodes_n, activation=tf.nn.tanh)
     gnn.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=0.01), run_eagerly=True)
     callbacks = [tf.keras.callbacks.ReduceLROnPlateau(factor=0.5, patience=5, verbose=1)]
     # have to add dummy batch dimension, otherwise keras fit will cut off data
-    gnn.fit((X[np.newaxis,:,:], A_tilde[np.newaxis,:,:], train_mask[np.newaxis,:]), y[np.newaxis,:], epochs=100, validation_data=((X[np.newaxis,:,:], A_tilde[np.newaxis,:,:], valid_mask[np.newaxis,:]), y[np.newaxis,:]), callbacks=callbacks)
+    # here the target is the original adjacency matrix
+    gnn.fit((X[np.newaxis,:,:], A_tilde[np.newaxis,:,:], train_mask[np.newaxis,:,:]), A[np.newaxis,:,:], epochs=100, validation_data=((X[np.newaxis,:,:], A_tilde[np.newaxis,:,:], valid_mask[np.newaxis,:,:]), A[np.newaxis,:,:]), callbacks=callbacks)
 
-    z, probs = gnn((X, A_tilde))
+    z, adj_pred = gnn((X, A_tilde))
 
 
 
