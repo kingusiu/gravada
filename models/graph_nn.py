@@ -9,11 +9,11 @@ def adjacency_loss_from_logits(adj_orig, adj_pred, pos_weight):
     # return tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(logits=adj_pred, labels=adj_orig)) 
 
 
+### Latent Space Loss (KL-Divergence)
 @tf.function
-def adjacency_loss(adj_orig, adj_pred):
-    # cast probability to a_ij = 1 if > 0.5 or a_ij = 0 if <= 0.5
-    bce = tf.keras.losses.BinaryCrossentropy()
-    return bce(adj_orig, adj_pred) 
+def kl_loss(z_mean, z_log_var):
+    kl = 1. + z_log_var - tf.square(z_mean) - tf.exp(z_log_var)
+    return -0.5 * tf.reduce_mean(kl, axis=-1) # multiplying mse by N -> using sum (instead of mean) in kl loss
 
 
 class GraphAutoencoder(tf.keras.Model):
