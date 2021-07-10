@@ -18,16 +18,16 @@ def adjacency_loss(adj_orig, adj_pred):
 
 class GraphAutoencoder(tf.keras.Model):
 
-    def __init__(self, nodes_n, feat_sz, activation, **kwargs):
+    def __init__(self, nodes_n, feat_sz, activation=tf.nn.tanh, **kwargs):
         super(GraphAutoencoder, self).__init__(**kwargs)
         self.nodes_n = nodes_n
         self.feat_sz = feat_sz
         self.input_shape_feat = [self.nodes_n, self.feat_sz]
         self.input_shape_adj = [self.nodes_n, self.nodes_n]
         self.activation = activation
-        self.loss_fn = tf.keras.losses.BinaryCrossentropy(from_logits=True)
+        self.loss_fn = tf.keras.losses.BinaryCrossentropy(from_logits=False)
         self.encoder = self.build_encoder()
-        self.decoder = lays.InnerProductDecoder(activation=tf.keras.activations.linear) # if activation sigmoid -> return probabilities from logits
+        self.decoder = lays.InnerProductDecoder(activation=tf.keras.activations.sigmoid) # if activation sigmoid -> return probabilities from logits
 
 
     def build_encoder(self):
