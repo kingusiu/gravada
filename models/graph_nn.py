@@ -81,6 +81,10 @@ class GraphAutoencoder(tf.keras.Model):
 
 
 class GraphVariationalAutoencoder(GraphAutoencoder):
+    
+    def __init__(self, nodes_n, feat_sz, activation, **kwargs):
+        super(GraphVariationalAutoencoder, self).__init__(**kwargs)
+        self.loss_fn_latent = kl_loss
 
     def build_encoder(self):
 
@@ -98,7 +102,41 @@ class GraphVariationalAutoencoder(GraphAutoencoder):
 
         self.z = self.z_mean + tf.random_normal(self.nodes_n) * tf.exp(self.z_log_std)
 
-        return tf.keras.Model(inputs=[inputs_feat, inputs_adj], outputs=self.z)
+        return tf.keras.Model(inputs=(inputs_feat, inputs_adj), outputs=[self.z, self.z_mean, self.z_log_std])
+    
+    
+    def call(self, inputs):
+        z, z_mean, z_log_std = self.encoder(inputs)
+        adj_pred = self.decoder(z)
+        return z, z_mean, z_log_std, adj_pred
+    
+    def train_step(self, data):
+        (X, adj_tilde), adj_orig = data
+
+        with tf.GradientTape() as tape:
+            z, z_mean, z_log_std, adj_pred = self((X, adj_tilde))  # Forward pass
+            # Compute the loss value (binary cross entropy for a_ij in {0,1})
+            loss_reco = self.loss_fn(adj_orig, adj_pred) # TODO: add regularization
+            loss_latent = self.loss_fn_latent(z_mean, z_log_std)
+
+        # Compute gradients
+        trainable_vars = self.trainable_variables
+        gradients = tape.gradient(loss, trainable_vars)
+        # Update weights
+        self.optimizer.apply_gradients(zip(gradients, trainable_vars))
+        # Return a dict mapping metric names to current value
+        return {m.name: m.result() for m in self.metrics}
+
+
+    def test_step(self, data):
+        (X, adj_tilde), adj_orig = data
+
+        z, z_mean, z_log_std, adj_pred = self((X, adj_tilde))  # Forward pass
+        # Compute the loss value (binary cross entropy for a_ij in {0,1})
+        loss_reco = self.loss_fn(adj_orig, adj_pred) # TODO: add regularization
+        loss_latent = self.loss_fn_latent(z_mean, z_log_std)
+        
+        return {'loss' : loss_reco+loss_latent, 'loss_reco': loss_reco, 'loss_latent': loss_latent}
 
 
 
