@@ -125,8 +125,8 @@ class GraphVariationalAutoencoder(GraphAutoencoder):
         # Update weights
         self.optimizer.apply_gradients(zip(gradients, trainable_vars))
         # Return a dict mapping metric names to current value
-        return {m.name: m.result() for m in self.metrics}
-
+        return {'loss' : loss_reco+loss_latent, 'loss_reco': loss_reco, 'loss_latent': loss_latent}
+        
 
     def test_step(self, data):
         (X, adj_tilde), adj_orig = data
