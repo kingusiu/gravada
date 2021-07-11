@@ -25,9 +25,9 @@ class GraphAutoencoder(tf.keras.Model):
         self.input_shape_feat = [self.nodes_n, self.feat_sz]
         self.input_shape_adj = [self.nodes_n, self.nodes_n]
         self.activation = activation
-        self.loss_fn = tf.keras.losses.BinaryCrossentropy(from_logits=False)
+        self.loss_fn = tf.nn.weighted_cross_entropy_with_logits
         self.encoder = self.build_encoder()
-        self.decoder = lays.InnerProductDecoder(activation=tf.keras.activations.sigmoid) # if activation sigmoid -> return probabilities from logits
+        self.decoder = lays.InnerProductDecoder(activation=tf.keras.activations.linear) # if activation sigmoid -> return probabilities from logits
 
 
     def build_encoder(self):
@@ -53,12 +53,13 @@ class GraphAutoencoder(tf.keras.Model):
     def train_step(self, data):
         # import ipdb; ipdb.set_trace()
         (X, adj_tilde), adj_orig = data
-        # pos_weight = tf.cast(adj_orig.shape[1] * adj_orig.shape[2] - tf.math.reduce_sum(adj_orig), tf.float32) / tf.math.reduce_sum(adj_orig)
+        # pos_weight = zero-adj / one-adj -> no-edge vs edge ratio (if more zeros than ones: > 1, if more ones than zeros < 1, e.g. for 1% of ones: 100)
+        pos_weight = tf.cast(adj_orig.shape[1] * adj_orig.shape[2] - tf.math.reduce_sum(adj_orig), tf.float32) / tf.math.reduce_sum(adj_orig)
 
         with tf.GradientTape() as tape:
             z, adj_pred = self((X, adj_tilde))  # Forward pass
             # Compute the loss value (binary cross entropy for a_ij in {0,1})
-            loss = self.loss_fn(adj_orig, adj_pred) # TODO: add regularization
+            loss = self.loss_fn(labels=adj_orig, logits=adj_pred, pos_weight=pos_weight) # TODO: add regularization
 
         # Compute gradients
         trainable_vars = self.trainable_variables
@@ -73,7 +74,7 @@ class GraphAutoencoder(tf.keras.Model):
         (X, adj_tilde), adj_orig = data
 
         z, adj_pred = self((X, adj_tilde), training=False)  # Forward pass
-        loss = self.loss_fn(adj_orig, adj_pred) # TODO: add regularization
+        loss = self.loss_fn(labels=adj_orig, logits=adj_pred, pos_weight=pos_weight) # TODO: add regularization
         
         return {'loss' : loss}
 
@@ -126,7 +127,7 @@ class GraphVariationalAutoencoder(GraphAutoencoder):
         self.optimizer.apply_gradients(zip(gradients, trainable_vars))
         # Return a dict mapping metric names to current value
         return {'loss' : loss_reco+loss_latent, 'loss_reco': loss_reco, 'loss_latent': loss_latent}
-        
+
 
     def test_step(self, data):
         (X, adj_tilde), adj_orig = data
