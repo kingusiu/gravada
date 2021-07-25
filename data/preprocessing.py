@@ -15,6 +15,14 @@ def mask_events_outliers(events, indices, values): # -> np.ndarray
     return events[mask]
 
 
+def std_norm(data, idx):
+    return (data[:,:,idx] - np.mean(data[:,:,idx]))/np.std(data[:,:,idx])
+
+
+def min_max_norm(data, idx):
+    return (data[:,:,idx] - np.mean(data[:,:,idx]))/np.std(data[:,:,idx])
+
+
 def normalize_features(particles):
     ''' normalize dataset
         cylindrical & cartesian coordinates: gaussian norm
