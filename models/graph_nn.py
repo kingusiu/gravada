@@ -54,7 +54,7 @@ class GraphAutoencoder(tf.keras.Model):
         # import ipdb; ipdb.set_trace()
         (X, adj_tilde), adj_orig = data
         # pos_weight = zero-adj / one-adj -> no-edge vs edge ratio (if more zeros than ones: > 1, if more ones than zeros < 1, e.g. for 1% of ones: 100)
-        pos_weight = tf.cast(adj_orig.shape[1] * adj_orig.shape[2] - tf.math.reduce_sum(adj_orig), tf.float32) / tf.math.reduce_sum(adj_orig)
+        pos_weight = tf.cast(adj_orig.shape[1] * adj_orig.shape[2] - tf.math.reduce_sum(adj_orig), tf.float32) / tf.cast(tf.math.reduce_sum(adj_orig), tf.float32)
 
         with tf.GradientTape() as tape:
             z, adj_pred = self((X, adj_tilde))  # Forward pass
@@ -72,9 +72,10 @@ class GraphAutoencoder(tf.keras.Model):
 
     def test_step(self, data):
         (X, adj_tilde), adj_orig = data
+        pos_weight = tf.cast(adj_orig.shape[1] * adj_orig.shape[2] - tf.math.reduce_sum(adj_orig), tf.float32) / tf.cast(tf.math.reduce_sum(adj_orig), tf.float32)
 
         z, adj_pred = self((X, adj_tilde), training=False)  # Forward pass
-        loss = self.loss_fn(labels=adj_orig, logits=adj_pred, pos_weight=pos_weight) # TODO: add regularization
+        loss = tf.math.reduce_mean(self.loss_fn(labels=adj_orig, logits=adj_pred, pos_weight=pos_weight)) # TODO: add regularization
         
         return {'loss' : loss}
 
@@ -84,7 +85,7 @@ class GraphAutoencoder(tf.keras.Model):
 class GraphVariationalAutoencoder(GraphAutoencoder):
     
     def __init__(self, nodes_n, feat_sz, activation, **kwargs):
-        super(GraphVariationalAutoencoder, self).__init__(**kwargs)
+        super(GraphVariationalAutoencoder, self).__init__(nodes_n, feat_sz, activation, **kwargs)
         self.loss_fn_latent = kl_loss
 
     def build_encoder(self):
@@ -101,24 +102,29 @@ class GraphVariationalAutoencoder(GraphAutoencoder):
         self.z_mean = lays.GraphConvolution(output_sz=1, activation=tf.keras.activations.linear)(x, inputs_adj)
         self.z_log_var = lays.GraphConvolution(output_sz=1, activation=tf.keras.activations.linear)(x, inputs_adj)
 
-        self.z = self.z_mean + tf.random_normal(self.nodes_n) * tf.exp(self.z_log_std)
+        epsilon = tf.keras.backend.random_normal(shape=(tf.shape(self.z_mean)[0], self.nodes_n, 1))
+        self.z = self.z_mean +  epsilon * tf.exp(0.5 * self.z_log_var)
 
-        return tf.keras.Model(inputs=(inputs_feat, inputs_adj), outputs=[self.z, self.z_mean, self.z_log_std])
+        return tf.keras.Model(inputs=(inputs_feat, inputs_adj), outputs=[self.z, self.z_mean, self.z_log_var])
     
     
     def call(self, inputs):
-        z, z_mean, z_log_std = self.encoder(inputs)
+        # import ipdb; ipdb.set_trace()
+        z, z_mean, z_log_var = self.encoder(inputs)
         adj_pred = self.decoder(z)
-        return z, z_mean, z_log_std, adj_pred
+        return z, z_mean, z_log_var, adj_pred
     
     def train_step(self, data):
         (X, adj_tilde), adj_orig = data
+        pos_weight = tf.cast(adj_orig.shape[1] * adj_orig.shape[2] - tf.math.reduce_sum(adj_orig), tf.float32) / tf.cast(tf.math.reduce_sum(adj_orig), tf.float32)
+
 
         with tf.GradientTape() as tape:
-            z, z_mean, z_log_std, adj_pred = self((X, adj_tilde))  # Forward pass
+            z, z_mean, z_log_var, adj_pred = self((X, adj_tilde))  # Forward pass
             # Compute the loss value (binary cross entropy for a_ij in {0,1})
-            loss_reco = self.loss_fn(adj_orig, adj_pred) # TODO: add regularization
-            loss_latent = self.loss_fn_latent(z_mean, z_log_std)
+            loss_reco = tf.math.reduce_mean(self.loss_fn(labels=adj_orig, logits=adj_pred, pos_weight=pos_weight), axis=(1,2)) # TODO: add regularization
+            loss_latent = tf.math.reduce_mean(self.loss_fn_latent(z_mean, z_log_var), axis=1)
+            loss = loss_reco + loss_latent
 
         # Compute gradients
         trainable_vars = self.trainable_variables
@@ -131,12 +137,12 @@ class GraphVariationalAutoencoder(GraphAutoencoder):
 
     def test_step(self, data):
         (X, adj_tilde), adj_orig = data
+        pos_weight = tf.cast(adj_orig.shape[1] * adj_orig.shape[2] - tf.math.reduce_sum(adj_orig), tf.float32) / tf.cast(tf.math.reduce_sum(adj_orig), tf.float32)
 
-        z, z_mean, z_log_std, adj_pred = self((X, adj_tilde))  # Forward pass
+        z, z_mean, z_log_var, adj_pred = self((X, adj_tilde))  # Forward pass
         # Compute the loss value (binary cross entropy for a_ij in {0,1})
-        loss_reco = self.loss_fn(adj_orig, adj_pred) # TODO: add regularization
-        loss_latent = self.loss_fn_latent(z_mean, z_log_std)
-        
+        loss_reco =  tf.math.reduce_mean(self.loss_fn(labels=adj_orig, logits=adj_pred, pos_weight=pos_weight)) # TODO: add regularization
+        loss_latent = tf.math.reduce_mean(self.loss_fn_latent(z_mean, z_log_var))
         return {'loss' : loss_reco+loss_latent, 'loss_reco': loss_reco, 'loss_latent': loss_latent}
 
 

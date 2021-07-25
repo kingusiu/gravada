@@ -1,6 +1,7 @@
 import tensorflow as tf
 import networkx as nx
 import numpy as np
+import h5py
 
 import data.input_samples as inpu
 import models.graph_nn as grap
@@ -8,7 +9,7 @@ import models.graph_nn as grap
 
 
 karate_classify_example = False
-karate_autoencode_example = True
+karate_autoencode_example = False
 
 if karate_classify_example:
 
@@ -47,13 +48,25 @@ elif karate_autoencode_example:
 
 else:
 
-    # get toy data
-    X, A, A_tilde = inpu.make_toy_graph()
-    pos_weight = float(A.shape[1] * A.shape[2] - A.sum()) / A.sum() # share of positive weight edges
+    # load data
+    filename = '/home/kinga/dev/datasamples/L1_anomaly_challenge/background_training_500K.h5'
+    ff = h5py.File(filename, 'r')
+    particles = np.asarray(ff.get('Particles'))
 
-    gnn = grap.GraphAutoencoder(nodes_n=X.shape[-2], feat_sz=X.shape[-1], activation=tf.nn.tanh)
-    gnn.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=0.01))
-    # gnn.fit(X, A, epochs=100, validation_data=(X,A), callbacks=[tf.keras.callbacks.ReduceLROnPlateau(factor=0.5, patience=5, verbose=1)])
-    gnn.fit((X, A_tilde), A, epochs=100, validation_data=((X,A_tilde),A), callbacks=[tf.keras.callbacks.ReduceLROnPlateau(factor=0.5, patience=5, verbose=1)])
+    nodes_n = particles.shape[1]
+    feat_sz = particles.shape[2]
+    batch_size = 128
 
-    A_hat = gnn((X, A_tilde))
+    particles_train = particles[:batch_size*20] # have to take multiple of batch_size because decoder output has trailing dim 1 and callbacks can not handle (alternative: squeeze latent outputs)
+
+    A = inpu.make_adjacencies(particles_train)
+    A_tilde = inpu.normalized_adjacency(A)
+
+    particles_train = inpu.normalize_features(particles_train)
+
+    gnn = grap.GraphVariationalAutoencoder(nodes_n=nodes_n, feat_sz=feat_sz, activation=tf.nn.tanh)
+    # gnn = grap.GraphAutoencoder(nodes_n=nodes_n, feat_sz=feat_sz, activation=tf.nn.tanh)
+    gnn.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=0.01), run_eagerly=True)
+
+    callbacks = [tf.keras.callbacks.ReduceLROnPlateau(factor=0.5, patience=5, verbose=1)]
+    gnn.fit((particles_train, A_tilde), A, epochs=100, batch_size=batch_size, validation_split=0.25, callbacks=callbacks)

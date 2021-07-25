@@ -3,6 +3,18 @@ import networkx as nx
 
 
 def normalized_adjacency(A):
+    D = np.array(np.sum(A, axis=2), dtype=np.float32) # compute outdegree (= rowsum)
+    D = np.nan_to_num(np.power(D,-0.5), posinf=0, neginf=0) # normalize (**-(1/2))
+    D = np.asarray([np.diagflat(dd) for dd in D]) # and diagonalize
+    return np.matmul(D, np.matmul(A, D))
+
+def make_adjacencies(particles):
+    real_p_mask = particles[:,:,0] > 0
+    adjacencies = (real_p_mask[:,:,np.newaxis] * real_p_mask[:,np.newaxis,:]).astype('float32')
+    return adjacencies
+
+
+def normalized_adjacency_no_selfref(A):
 
     A_tilde = A + np.matrix(np.eye(A.shape[0])) # add identity for self aggregation   
     D = np.array(np.sum(A_tilde, axis=1), dtype=np.float32) # compute outdegree (= rowsum)
@@ -68,3 +80,17 @@ def make_karate_data_autoencoder():
     valid_mask = np.random.choice([True, False], (nodes_n, nodes_n))
 
     return X, A_tilde, A, train_mask, valid_mask
+
+
+def normalize_features(particles):
+    idx_pt, idx_eta, idx_phi, idx_class = range(4)
+    # min-max normalize pt
+    particles[:,:,idx_pt] = (particles[:,:,idx_pt] - np.min(particles[:,:,idx_pt])) / (np.max(particles[:,:,idx_pt])-np.min(particles[:,:,idx_pt]))
+    # standard normalize angles
+    particles[:,:,idx_eta] = (particles[:,:,idx_eta] - np.mean(particles[:,:,idx_eta]))/np.std(particles[:,:,idx_eta])
+    particles[:,:,idx_eta] = (particles[:,:,idx_eta] - np.mean(particles[:,:,idx_phi]))/np.std(particles[:,:,idx_phi])
+    # min-max normalize class label
+    particles[:,:,idx_class] = (particles[:,:,idx_class] - np.min(particles[:,:,idx_class])) / (np.max(particles[:,:,idx_class])-np.min(particles[:,:,idx_class]))
+    return particles
+
+

@@ -15,13 +15,16 @@ class GraphConvolution(tf.keras.layers.Layer):
         
         # kernel in Keras is transposed: instead of Wx computing x^T W^T, s.t. first dimension of W matches input dimension
         self.kernel = self.add_weight("kernel", shape=[int(input_shape[-1]), self.output_sz], initializer=tf.keras.initializers.GlorotUniform())
-
-        # TODO: add bias? (if yes, can also call base layer build directly)
+        self.bias = self.add_weight("bias",shape=[self.output_sz])
 
 
     def call(self, inputs, adjacency):
+        # WX
         x = tf.matmul(inputs, self.kernel)
+        x = tf.add(x, self.bias)
+        # AWX
         x = tf.matmul(adjacency, x)
+        #sig(AWX)
         return self.activation(x)
 
     def get_config(self):
