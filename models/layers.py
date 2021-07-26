@@ -33,7 +33,7 @@ class GraphConvolution(tf.keras.layers.Layer):
         return config
 
 
-def GraphConvolutionExpanded(GraphConvolution):
+class GraphConvolutionExpanded(GraphConvolution):
     ''' graph convolution with diagonalized features NxN and 1x1 convolution of channels 
         adapted from https://arxiv.org/pdf/1704.01212.pdf
     '''
@@ -53,7 +53,7 @@ def GraphConvolutionExpanded(GraphConvolution):
 
     def call(self, inputs, adjacency):
         # diag(X)*diag(W)
-        x = inputs * self.feat_kernel + feat_bias
+        x = inputs * self.feat_kernel + self.feat_bias
         # reduce 
         x = tf.matmul(x, self.reduce_kernel)
         x = tf.add(x, self.reduce_bias)
