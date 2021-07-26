@@ -33,6 +33,37 @@ class GraphConvolution(tf.keras.layers.Layer):
         return config
 
 
+def GraphConvolutionExpanded(GraphConvolution):
+    ''' graph convolution with diagonalized features NxN and 1x1 convolution of channels 
+        adapted from https://arxiv.org/pdf/1704.01212.pdf
+    '''
+
+    def build(self, input_shape):
+
+        feats_n = input_shape[-1]
+        nodes_n = input_shape[-2]
+        
+        # elementwise (NxF) multiplication kernel
+        self.feat_kernel = self.add_weight("feat_kernel", shape=[nodes_n, feats_n], initializer=tf.keras.initializers.GlorotUniform())
+        self.feat_bias = self.add_weight("feat_bias", shape=[nodes_n, feats_n], initializer=tf.keras.initializers.Zeros())
+        # K wise reduction kernel (k output features)
+        self.reduce_kernel = self.add_weight("redu_kernel", shape=[feats_n, self.output_sz], initializer=tf.keras.initializers.GlorotUniform())
+        self.reduce_bias = self.add_weight("redu_bias", shape=[self.output_sz], initializer=tf.keras.initializers.Zeros())
+
+
+    def call(self, inputs, adjacency):
+        # diag(X)*diag(W)
+        x = inputs * self.feat_kernel + feat_bias
+        # reduce 
+        x = tf.matmul(x, self.reduce_kernel)
+        x = tf.add(x, self.reduce_bias)
+        # AWX
+        x = tf.matmul(adjacency, x)
+        #sig(AWX)
+        return self.activation(x)
+
+
+
 class InnerProductDecoder(tf.keras.layers.Layer):
 
     ''' inner product decoder reconstructing adjacency matrix as act(z^T z) 

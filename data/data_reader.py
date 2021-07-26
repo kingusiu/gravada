@@ -23,4 +23,4 @@ def read_event_samples_from_file(filepath, all_jets=False):
             obj_all_feat = np.concatenate((obj_cart, obj_cyl), axis=-1)
             obj_all_feat_list.append(obj_all_feat)
 
-    return np.concatenate(obj_all_feat_list, axis=1)
+    return np.concatenate(obj_all_feat_list, axis=1).astype('float32')
