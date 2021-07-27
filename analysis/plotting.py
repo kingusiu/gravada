@@ -1,8 +1,10 @@
 import matplotlib.pyplot as plt
+from matplotlib.lines import Line2D
 from matplotlib import colors
 import os
 import numpy as np
 import sklearn.metrics as skl
+import mplhep as hep
 
 
 def is_outlier_percentile(points, percentile=99.9):

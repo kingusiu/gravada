@@ -1,6 +1,10 @@
 import h5py
 import numpy as np
 
+import pofah.util.event_sample as evsa
+import pofah.phase_space.cut_constants as cuts
+
+
 def read_event_samples_from_file(filepath, all_jets=False):
 
     ''' reads event based inputs into object input list excluding pf candidates of jets 
@@ -24,3 +28,13 @@ def read_event_samples_from_file(filepath, all_jets=False):
             obj_all_feat_list.append(obj_all_feat)
 
     return np.concatenate(obj_all_feat_list, axis=1).astype('float32')
+
+
+def read_dijet_samples_from_file(filepath, type='side'):
+    sample_cuts = cuts.sideband_cuts if type == 'side' else cuts.signalregion_cuts
+    sample = evsa.EventSample.from_input_file(filepath, **sample_cuts)
+    consti_j1, consti_j2 = sample.get_particles()
+    samples = np.vstack([consti_j1, consti_j2])
+    np.random.shuffle(samples)
+    return samples
+
