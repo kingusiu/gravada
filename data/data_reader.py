@@ -30,9 +30,9 @@ def read_event_samples_from_file(filepath, all_jets=False):
     return np.concatenate(obj_all_feat_list, axis=1).astype('float32')
 
 
-def read_dijet_samples_from_file(filepath, type='side'):
-    sample_cuts = cuts.sideband_cuts if type == 'side' else cuts.signalregion_cuts
-    sample = evsa.EventSample.from_input_file(filepath, **sample_cuts)
+def read_dijet_samples_from_file(file_path, sample_id='qcd_side'):
+    sample_cuts = cuts.sideband_cuts if sample_id == 'qcd_side' else cuts.signalregion_cuts
+    sample = evsa.EventSample.from_input_file(sample_id, file_path, **sample_cuts)
     consti_j1, consti_j2 = sample.get_particles()
     samples = np.vstack([consti_j1, consti_j2])
     np.random.shuffle(samples)

@@ -30,7 +30,7 @@ def normalize_features(particles, feature_names):
 
     '''
     # min-max normalize pt
-    idx_pt = features_names.index('pt')
+    idx_pt = feature_names.index('pt')
     particles[:,:,idx_pt] = min_max_norm(particles, idx_pt)
     # standard normalize angles and cartesians
     for idx, _ in enumerate([n for n in feature_names if 'pt' not in feature_names]):

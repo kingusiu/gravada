@@ -38,6 +38,11 @@ class GraphConvolutionExpanded(GraphConvolution):
         adapted from https://arxiv.org/pdf/1704.01212.pdf
     '''
 
+    def __init__(self, use_global_bias=False, **kwargs):
+        super(GraphConvolutionExpanded, self).__init__(**kwargs)
+        self.use_global_bias = use_global_bias
+
+
     def build(self, input_shape):
 
         feats_n = input_shape[-1]
@@ -49,6 +54,12 @@ class GraphConvolutionExpanded(GraphConvolution):
         # K wise reduction kernel (k output features)
         self.reduce_kernel = self.add_weight("redu_kernel", shape=[feats_n, self.output_sz], initializer=tf.keras.initializers.GlorotUniform())
         self.reduce_bias = self.add_weight("redu_bias", shape=[self.output_sz], initializer=tf.keras.initializers.Zeros())
+
+        # global bias added after message passing
+        if self.use_global_bias:
+            self.global_bias = self.add_weight("glob_bias", shape=[self.output_sz], initializer=tf.keras.initializers.Zeros())
+        else:
+            self.global_bias = None
 
 
     def call(self, inputs, adjacency):
