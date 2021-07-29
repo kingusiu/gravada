@@ -18,7 +18,7 @@ def kl_loss(z_mean, z_log_var):
 
 class GraphAutoencoder(tf.keras.Model):
 
-    def __init__(self, nodes_n, feat_sz, activation=tf.nn.tanh, graphLayer='conv', **kwargs):
+    def __init__(self, nodes_n, feat_sz, activation=tf.nn.tanh, graphLayer='conv', use_global_bias=False, **kwargs):
         super(GraphAutoencoder, self).__init__(**kwargs)
         self.nodes_n = nodes_n
         self.feat_sz = feat_sz
@@ -27,6 +27,7 @@ class GraphAutoencoder(tf.keras.Model):
         self.activation = activation
         self.loss_fn = tf.nn.weighted_cross_entropy_with_logits
         self.graphLayer = lays.GraphConvolution if graphLayer == 'conv' else lays.GraphConvolutionExpanded
+        self.use_global_bias = use_global_bias
         self.encoder = self.build_encoder()
         self.decoder = lays.InnerProductDecoder(activation=tf.keras.activations.linear) # if activation sigmoid -> return probabilities from logits
 
@@ -38,9 +39,9 @@ class GraphAutoencoder(tf.keras.Model):
         x = inputs_feat
         #feat_sz-1 layers needed to reduce to R^2 
         for output_sz in reversed(range(2, self.feat_sz)):
-            x = self.graphLayer(output_sz=output_sz, activation=self.activation)(x, inputs_adj)
+            x = self.graphLayer(output_sz=output_sz, activation=self.activation, use_global_bias=self.use_global_bias)(x, inputs_adj)
         # NO activation before latent space: last graph with linear pass through activation
-        x = self.graphLayer(output_sz=1, activation=tf.keras.activations.linear)(x, inputs_adj)
+        x = self.graphLayer(output_sz=1, activation=tf.keras.activations.linear, use_global_bias=self.use_global_bias)(x, inputs_adj)
         encoder = tf.keras.Model(inputs=(inputs_feat, inputs_adj), outputs=x)
         encoder.summary()
         return encoder

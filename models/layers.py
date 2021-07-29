@@ -4,10 +4,12 @@ import tensorflow as tf
 
 class GraphConvolution(tf.keras.layers.Layer):
     
-    def __init__(self, output_sz, activation=tf.keras.activations.linear, **kwargs):
+    def __init__(self, output_sz, activation=tf.keras.activations.linear, use_global_bias=False, **kwargs):
         super(GraphConvolution, self).__init__(**kwargs)
         self.output_sz = output_sz
         self.activation = activation
+        self.use_global_bias = use_global_bias
+
 
     def build(self, input_shape):
         # build is invoked first time the layer is called, input_shape is based on the first argument 
@@ -17,13 +19,20 @@ class GraphConvolution(tf.keras.layers.Layer):
         self.kernel = self.add_weight("kernel", shape=[int(input_shape[-1]), self.output_sz], initializer=tf.keras.initializers.GlorotUniform())
         self.bias = self.add_weight("bias", shape=[self.output_sz], initializer=tf.keras.initializers.Zeros())
 
+        # global bias added after message passing
+        if self.use_global_bias:
+            self.global_bias = self.add_weight("glob_bias", shape=[self.output_sz], initializer=tf.keras.initializers.Zeros())
+        else:
+            self.global_bias = None
+
 
     def call(self, inputs, adjacency):
         # WX
-        x = tf.matmul(inputs, self.kernel)
-        x = tf.add(x, self.bias)
+        x = tf.matmul(inputs, self.kernel) + self.bias
         # AWX
         x = tf.matmul(adjacency, x)
+        if self.use_global_bias:
+            x = tf.add(x, self.global_bias)    
         #sig(AWX)
         return self.activation(x)
 
@@ -37,11 +46,6 @@ class GraphConvolutionExpanded(GraphConvolution):
     ''' graph convolution with diagonalized features NxN and 1x1 convolution of channels 
         adapted from https://arxiv.org/pdf/1704.01212.pdf
     '''
-
-    def __init__(self, use_global_bias=False, **kwargs):
-        super(GraphConvolutionExpanded, self).__init__(**kwargs)
-        self.use_global_bias = use_global_bias
-
 
     def build(self, input_shape):
 
@@ -63,13 +67,14 @@ class GraphConvolutionExpanded(GraphConvolution):
 
 
     def call(self, inputs, adjacency):
-        # diag(X)*diag(W)
+        # diag(X)*diag(W) + B (elementwise addition)
         x = inputs * self.feat_kernel + self.feat_bias
         # reduce 
-        x = tf.matmul(x, self.reduce_kernel)
-        x = tf.add(x, self.reduce_bias)
+        x = tf.matmul(x, self.reduce_kernel) + self.reduce_bias
         # AWX
         x = tf.matmul(adjacency, x)
+        if self.use_global_bias:
+            x = tf.add(x, self.global_bias)    
         #sig(AWX)
         return self.activation(x)
 
